@@ -1,24 +1,24 @@
-Content-Type: multipart/mixed; boundary="===============6780562153984110626=="
+Content-Type: multipart/mixed; boundary="===============5143741542750620206=="
 MIME-Version: 1.0
 
---===============6780562153984110626==
+--===============5143741542750620206==
 Content-Type: text/cloud-config; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment; filename="tmpx36iaf3q"
+Content-Disposition: attachment; filename="tmpmhyu8s7z"
 
 #cloud-config
 vinitparam:
- - uuid : C8K-51C0A820-5BEA-0407-B67B-0862CD985335
- - otp : 7dbb198fb7104a44836fa92f99cb62de
+ - uuid : C8K-F4DC6EE1-C0F8-6020-C51A-AFDE6802E77C
+ - otp : 406bf25ac41d43728ac718ff3b6e7085
  - vbond : vbond-286029639.sdwan.cisco.com
  - org : cor_sdci
 
---===============6780562153984110626==
+--===============5143741542750620206==
 Content-Type: text/cloud-boothook; charset="us-ascii"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment; filename="config-C8K-51C0A820-5BEA-0407-B67B-0862CD985335.txt"
+Content-Disposition: attachment; filename="config-C8K-F4DC6EE1-C0F8-6020-C51A-AFDE6802E77C.txt"
 
 #cloud-boothook
   system
@@ -26,10 +26,10 @@ Content-Disposition: attachment; filename="config-C8K-51C0A820-5BEA-0407-B67B-08
    pseudo-confirm-commit 300
    personality           vedge
    device-model          vedge-C8000V
-   chassis-number        C8K-51C0A820-5BEA-0407-B67B-0862CD985335
-   system-ip             10.1.1.2
+   chassis-number        C8K-F4DC6EE1-C0F8-6020-C51A-AFDE6802E77C
+   system-ip             2.1.1.2
    overlay-id            1
-   site-id               10111
+   site-id               2111
    no transport-gateway enable
    port-offset           1
    control-session-pps   300
@@ -40,7 +40,7 @@ Content-Disposition: attachment; filename="config-C8K-51C0A820-5BEA-0407-B67B-08
    track-transport
    track-default-gateway
    console-baud-rate     19200
-   config-template-name  Default_AWS_TGW_C8000V_Template_V01
+   config-template-name  AWS_TGW_C8000V_Template_V01
    no on-demand enable
    on-demand idle-timeout 10
    vbond vbond-286029639.sdwan.cisco.com port 12346
@@ -83,11 +83,11 @@ Content-Disposition: attachment; filename="config-C8K-51C0A820-5BEA-0407-B67B-08
    dual-side optimization enable
   !
   sdwan
-   interface GigabitEthernet2
+   interface GigabitEthernet1
     tunnel-interface
      encapsulation ipsec weight 1
      no border
-     color public-internet
+     color biz-internet
      no last-resort-circuit
      no low-bandwidth-link
      no vbond-as-stun-server
@@ -97,12 +97,12 @@ Content-Disposition: attachment; filename="config-C8K-51C0A820-5BEA-0407-B67B-08
      nat-refresh-interval          5
      hello-interval                1000
      hello-tolerance               12
-     allow-service all
+     no allow-service all
      no allow-service bgp
      allow-service dhcp
      allow-service dns
      allow-service icmp
-     allow-service sshd
+     no allow-service sshd
      no allow-service netconf
      no allow-service ntp
      no allow-service ospf
@@ -112,11 +112,44 @@ Content-Disposition: attachment; filename="config-C8K-51C0A820-5BEA-0407-B67B-08
      no allow-service bfd
     exit
    exit
+   interface GigabitEthernet2
+    tunnel-interface
+     encapsulation ipsec weight 1
+     no border
+     color mpls restrict
+     no last-resort-circuit
+     no low-bandwidth-link
+     no vbond-as-stun-server
+     vmanage-connection-preference 5
+     port-hop
+     carrier                       default
+     nat-refresh-interval          5
+     hello-interval                1000
+     hello-tolerance               12
+     no allow-service all
+     no allow-service bgp
+     allow-service dhcp
+     allow-service dns
+     allow-service icmp
+     no allow-service sshd
+     no allow-service netconf
+     no allow-service ntp
+     no allow-service ospf
+     no allow-service stun
+     allow-service https
+     no allow-service snmp
+     no allow-service bfd
+    exit
+   exit
+   interface GigabitEthernet3
+   exit
    appqoe
     no tcpopt enable
     no dreopt enable
     no httpopt enable
    !
+   ip load-sharing algorithm ip-and-ports
+   ipv6 load-sharing algorithm ip-and-ports
    omp
     no shutdown
     send-path-limit  4
@@ -145,7 +178,7 @@ Content-Disposition: attachment; filename="config-C8K-51C0A820-5BEA-0407-B67B-08
   service tcp-keepalives-out
   no service tcp-small-servers
   no service udp-small-servers
-  hostname use1-ce2
+  hostname aws-use-ce2
   username admin privilege 15 secret 9 $9$3V6L3V6L2VUI2k$ysPnXOdg8RLj9KgMdmfHdSHkdaMmiHzGaUpcqH6pfTo
   vrf definition Mgmt-intf
    description Management
@@ -174,7 +207,6 @@ Content-Disposition: attachment; filename="config-C8K-51C0A820-5BEA-0407-B67B-08
   interface GigabitEthernet1
    no shutdown
    arp timeout 1200
-   vrf forwarding Mgmt-intf
    ip address dhcp client-id GigabitEthernet1
    no ip redirects
    ip dhcp client default-router distance 1
@@ -193,6 +225,38 @@ Content-Disposition: attachment; filename="config-C8K-51C0A820-5BEA-0407-B67B-08
    load-interval 30
    mtu           1500
    negotiation auto
+  exit
+  interface GigabitEthernet3
+   no shutdown
+   arp timeout 1200
+   ip address dhcp client-id GigabitEthernet3
+   no ip redirects
+   ip dhcp client default-router distance 1
+   ip mtu    1500
+   load-interval 30
+   mtu           1500
+   negotiation auto
+  exit
+  interface GigabitEthernet4
+   no shutdown
+   arp timeout 1200
+   vrf forwarding Mgmt-intf
+   ip address dhcp client-id GigabitEthernet4
+   no ip redirects
+   ip dhcp client default-router distance 1
+   ip mtu    1500
+   load-interval 30
+   mtu           1500
+   negotiation auto
+  exit
+  interface Tunnel1
+   no shutdown
+   ip unnumbered GigabitEthernet1
+   no ip redirects
+   ipv6 unnumbered GigabitEthernet1
+   no ipv6 redirects
+   tunnel source GigabitEthernet1
+   tunnel mode sdwan
   exit
   interface Tunnel2
    no shutdown
@@ -232,4 +296,4 @@ Content-Disposition: attachment; filename="config-C8K-51C0A820-5BEA-0407-B67B-08
  !
 !
 
---===============6780562153984110626==--
+--===============5143741542750620206==--
