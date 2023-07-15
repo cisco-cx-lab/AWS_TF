@@ -7,6 +7,7 @@ terraform {
   }
 }
 
+# Create a Transit VPC to launch the redundant cloud gateways 
 resource "aws_vpc" "vpc" {
 cidr_block = var.cidr_block
 tags = {
@@ -14,6 +15,7 @@ tags = {
 }
 }
 
+# Set up four subnets within the Transit VPC to segregate the network traffic.
 resource "aws_subnet" "subnets" {
   for_each = {for index, net in var.vpc_subnets: net.name => net}
   cidr_block = each.value["subnet"]
@@ -24,6 +26,7 @@ resource "aws_subnet" "subnets" {
   availability_zone = each.value["az"]
 }
 
+# Create IGW for public route table
 resource "aws_internet_gateway" "gw" {
 
  vpc_id = aws_vpc.vpc.id
@@ -33,6 +36,7 @@ resource "aws_internet_gateway" "gw" {
  }
 }
 
+# Create four separate route tables, one for each subnet, to define the routing behavior
 resource "aws_route_table" "rt" {
  vpc_id = aws_vpc.vpc.id
  for_each = toset(var.vpc_rt)
@@ -41,11 +45,13 @@ resource "aws_route_table" "rt" {
  }
 }
 
+# Associate IGW to public rt
 resource "aws_route_table_association" "gateway" {
   gateway_id = aws_internet_gateway.gw.id
   route_table_id = aws_route_table.rt["public"].id
 }
 
+# Associate subnets with the appropriate route tables
 resource "aws_route_table_association" "public-a" {
   subnet_id = aws_subnet.subnets["use1-public-a"].id
   route_table_id = aws_route_table.rt["public"].id
@@ -64,20 +70,21 @@ route_table_id = aws_route_table.rt["private"].id
 }
 resource "aws_route_table_association" "mgmt-a" {
 subnet_id = aws_subnet.subnets["use1-mgmt-a"].id
-route_table_id = aws_route_table.rt["mgmt"].id
+route_table_id = aws_route_table.rt["private"].id
 }
 resource "aws_route_table_association" "mgmt-b" {
 subnet_id = aws_subnet.subnets["use1-mgmt-b"].id
-route_table_id = aws_route_table.rt["mgmt"].id
+route_table_id = aws_route_table.rt["private"].id
 }
 resource "aws_route_table_association" "service-a" {
 subnet_id = aws_subnet.subnets["use1-service-a"].id
-route_table_id = aws_route_table.rt["service"].id
+route_table_id = aws_route_table.rt["private"].id
 }
 resource "aws_route_table_association" "service-b" {
 subnet_id = aws_subnet.subnets["use1-service-b"].id
-route_table_id = aws_route_table.rt["service"].id
+route_table_id = aws_route_table.rt["private"].id
 }
+# Configure SG to allow sdwan traffic
 resource "aws_security_group" "allow_sdwan"{
 name = var.sg_name
 description = "SG to allow sdwan"
@@ -97,6 +104,8 @@ egress {
   cidr_blocks = ["0.0.0.0/0"]
 }
 }
+
+# Create four Network Interfaces for each cloud gateway
 resource "aws_network_interface" "public_nics-a" {
 subnet_id = aws_subnet.subnets["use1-public-a"].id
   security_groups = [aws_security_group.allow_sdwan.id]
@@ -158,6 +167,7 @@ subnet_id = aws_subnet.subnets["use1-mgmt-b"].id
                      }  
 }
 
+# Create Elastic IP for public network interface
 resource "aws_eip" "eip_a" {
   network_interface = aws_network_interface.public_nics-a.id
 }
@@ -166,6 +176,7 @@ resource "aws_eip" "eip_b" {
   network_interface = aws_network_interface.public_nics-b.id
 }
 
+# Deploy cloud gateway with the startup configuration
 resource "aws_instance" "cisco_cat800v_instance1" {
  ami                         ="ami-0e0b8922c216d76dd"
  instance_type               ="c5.xlarge"

@@ -1,0 +1,281 @@
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 4.0"
+    }
+  }
+}
+
+resource "aws_vpc" "vpc" {
+cidr_block = var.cidr_block
+tags = {
+ Name = var.vpc_name
+}
+}
+
+resource "aws_subnet" "public" {
+for_each = {for k,v in var.vpc_subnets : k=> v
+if can (regex("public",v.name))}
+  cidr_block = each.value["subnet"]
+  tags = {
+   Name = each.value["name"]
+  }
+  vpc_id = aws_vpc.vpc.id
+  availability_zone = each.value["az"]
+}
+
+resource "aws_subnet" "private" {
+for_each = {for k,v in var.vpc_subnets : k=> v
+if can (regex("private",v.name))}
+  cidr_block = each.value["subnet"]
+  tags = {
+   Name = each.value["name"]
+  }
+  vpc_id = aws_vpc.vpc.id
+  availability_zone = each.value["az"]
+}
+
+resource "aws_subnet" "service" {
+for_each = {for k,v in var.vpc_subnets : k=> v
+if can (regex("service",v.name))}
+  cidr_block = each.value["subnet"]
+  tags = {
+   Name = each.value["name"]
+  }
+  vpc_id = aws_vpc.vpc.id
+  availability_zone = each.value["az"]
+}
+
+resource "aws_subnet" "mgmt" {
+for_each = {for k,v in var.vpc_subnets : k=> v
+if can (regex("mgmt",v.name))}
+  cidr_block = each.value["subnet"]
+  tags = {
+   Name = each.value["name"]
+  }
+  vpc_id = aws_vpc.vpc.id
+  availability_zone = each.value["az"]
+}
+
+#resource "aws_subnet" "subnets" {
+ # for_each = {for index, net in var.vpc_subnets: net.name => net}
+  #cidr_block = each.value["subnet"]
+  #tags = {
+  # Name = each.value["name"]
+  #}
+  #vpc_id = aws_vpc.vpc.id
+  #availability_zone = each.value["az"]
+#}
+
+resource "aws_internet_gateway" "gw" {
+
+ vpc_id = aws_vpc.vpc.id
+
+ tags = {
+  Name = var.vpc_gw
+ }
+}
+
+resource "aws_route_table" "rt" {
+ vpc_id = aws_vpc.vpc.id
+ for_each = toset(var.vpc_rt)
+ tags = {
+  Name = each.value
+ }
+}
+
+resource "aws_route_table_association" "public-1a" {
+subnet_id = aws_subnet.public.id
+gateway_id = aws_internet_gateway.gw.id
+route_table_id = aws_route_table.rt["public"].id
+}
+resource "aws_route_table_association" "private" {
+subnet_id = aws_subnet.private.id
+route_table_id = aws_route_table.rt["private"].id
+}
+resource "aws_route_table_association" "mgmt" {
+subnet_id = each.mgmt.id
+route_table_id = aws_route_table.rt["mgmt"].id
+}
+resource "aws_route_table_association" "service" {
+subnet_id = each.service.id
+route_table_id = aws_route_table.rt["service"].id
+}
+#vpc security groups needs to be modified based on requirement
+resource "aws_security_group" "allow_sdwan"{
+name = var.sg_name
+description = "SG to allow sdwan"
+vpc_id = aws_vpc.vpc.id
+
+ingress {
+  protocol  = -1
+  self      = true
+  from_port = 0
+  to_port   = 0
+}
+
+egress {
+  from_port   = 0
+  to_port     = 0
+  protocol    = "-1"
+  cidr_blocks = ["0.0.0.0/0"]
+}
+}
+resource "aws_network_interface" "public_nics" {
+  subnet_id = aws_subnet.public.id
+  security_groups = aws_security_group.allow_sdwan.id
+    tags             ={
+    Name           ="public_nics"
+                     }  
+}
+
+resource "aws_network_interface" "private_nics" {
+  subnet_id        = aws_subnet.private.id
+  
+  tags             ={
+    Name           ="private_nics"
+                     }  
+}
+
+resource "aws_network_interface" "service_nics" {
+  subnet_id        = aws_subnet.service.id
+  
+   tags            ={
+    Name           ="service_nics"
+                     }  
+}
+resource "aws_network_interface" "mgmt_nics" {
+  subnet_id        = aws_subnet.mgmt.id
+  
+  tags             ={
+    Name           ="private_nics"
+                     }  
+}
+data "aws_ami" cat800v_ami {
+ most_recent=true
+
+ filter{
+ name="name"
+ values=["Cisco-C8K-17.09.03a*"]
+ }
+
+ owners=["amazon"]
+
+ filter{
+ name="virtualization-type"
+ values=["hvm"]
+ }
+
+ filter{
+ name="architecture"
+ values=["x86_64"]
+ }
+
+ filter{
+ name="root-device-type"
+ values=["ebs"]
+ }
+
+ filter{
+ name="block-device-mapping.volume-type"
+ values=["gp2"]
+ }
+
+ filter{
+ name="block-device-mapping.device-name"
+ values=["/dev/sda1"]
+ }  
+}
+
+#data cloudinit_config cat800v_cloud_init_config {
+
+# user_data_base64=filebase64("${path.module}/../../bootstrap/use1-cat8000v-ce1-cloud-init.txt")
+#}
+
+
+
+module cisco_cat800v_instance {
+
+ source                      ="terraform-aws-modules/ec2-instance/aws"
+
+ ami                         ="${data.aws_ami.cat800v_ami.id}"
+ instance_type               ="c5.xlarge"
+
+ #user_data                   ="${data.cloudinit_config.cat800v_cloud_init_config.user_data}"
+user_data = filebase64("${path.module}/../../bootstrap/use1-cat8000v-ce1-cloud-init.txt")
+ #key_name                    ="${var.key_pair}"
+
+ vpc_security_group_ids      = aws_security_group.allow_sdwan.id
+
+ associate_public_ip_address=true
+
+ root_block_device=[
+   { 
+     volume_size           	=16,
+     volume_type           	="gp2",
+     delete_on_termination	=true,
+   }
+ ]
+
+ ebs_block_device=[
+   { 
+     device_name 			= "/dev/sda1",
+     volume_size 			=16,
+     volume_type 			= "gp2",
+     delete_on_termination=true,
+   },
+ ]
+
+ network_interface=[
+   { 
+     device_index         				=count.index,
+     network_interface_id 				="${element(aws_network_interface.public_nics.*.id,count.index)}",
+   },
+ ]
+
+ count                      			=length(var.network_interfaces)
+}
+
+
+output awsvpn_public_ip_address {
+
+ value=cisco_cat800v_instance.public_ip
+
+ description=("The Public IP address of the Cisco Cat800V Instance")
+} 
+
+output awsvpn_private_ip_address {
+
+ value=cisco_cat800v_instance.private_ip
+
+ description=("The Private IP address of the Cisco Cat800V Instance")
+} 
+
+output awsvpn_instance_state {
+
+ value=cisco_cat800v_instance.state
+
+ description=("The State of the Cisco Cat800V Instance")
+} 
+
+output awsvpn_availability_zone {
+
+ value=cisco_cat800v_instance.availability_zone
+
+ description=("The Availability Zone of the Cisco Cat800V Instance")
+} 
+
+output awsvpn_security_groups {
+
+ value=cisco_cat800v_instance.security_groups
+
+ description=("The Security Groups associated with the Cisco Cat800V Instance")
+} 
+
+#output awsvpn_key_pair {
+
+# value=cisco_cat800v_instance.key_pair
+
+# description=("The Key Pair used for SSH access to the Cisco Cat800V Instance")
+#}
