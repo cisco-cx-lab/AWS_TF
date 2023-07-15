@@ -45,3 +45,7 @@ variable "cloud_gateway" {
   cloudinit = string
 }))
 }
+variable "tgw_name"{
+  description = "exiting tgw"
+  type = string
+}
