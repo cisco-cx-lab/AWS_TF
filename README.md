@@ -2,15 +2,15 @@ Cisco Catalyst SD-WAN Cloud OnRamp provides automated solution for initial deplo
 
 The deployment of this option can be done using Infrastructure as Code (IaC) tools such as Terraform.  This tf code can be used for deployment of following design in AWS enviorment with existing TGW. 
 
-  AWS Deployment Procedure:
+ # AWS Deployment Procedure:
   
-•	Create a Transit VPC to launch the redundant cloud gateways (Cat8000v).
-•	Set up four subnets within the Transit VPC to segregate the network traffic.
-a.	One subnet for Public Internet
-b.	One subnet for Private Transport (DX to on-prem)
-c.	One subnet for Service VPN
-d.	One subnet for Management 
-•	Create four separate route tables, one for each subnet, to define the routing behavior.
+-	Create a Transit VPC to launch the redundant cloud gateways (Cat8000v).
+-	Set up four subnets within the Transit VPC to segregate the network traffic.
+  - a.	One subnet for Public Internet
+  - b.	One subnet for Private Transport (DX to on-prem)
+  - c.	One subnet for Service VPN
+  - d.	One subnet for Management 
+-	Create four separate route tables, one for each subnet, to define the routing behavior.
 •	Create four Network Interfaces for each cloud gateway(Cat8000v) within the Transit VPC.
 a.	One Network Interface for Public transport 
 b.	One Network Interface for Private transport 
