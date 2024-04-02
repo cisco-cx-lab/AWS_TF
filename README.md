@@ -8,8 +8,8 @@ The deployment of this option can be done using Infrastructure as Code (IaC) too
   
 -	Create a Transit VPC to launch the redundant cloud gateways (Cat8000v).
 -	Set up four subnets within the Transit VPC to segregate the network traffic.
-  - a.	One subnet for Public Internet
-  - b.	One subnet for Private Transport (DX to on-prem)
+.. a.	One subnet for Public Internet
+.. b.	One subnet for Private Transport (DX to on-prem)
   - c.	One subnet for Service VPN
   - d.	One subnet for Management 
 -	Create four separate route tables, one for each subnet, to define the routing behavior.
